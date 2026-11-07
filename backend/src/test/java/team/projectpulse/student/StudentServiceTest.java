@@ -233,8 +233,12 @@ class StudentServiceTest {
     }
 
     @Test
-    void testDeactivateStudentAlreadyDeactivated() {
-        // Given: another instructor's deactivation got there first, so the conditional update reports no row (T5b, 6b)
+    void testDeactivateStudentReportsAlreadyDeactivatedWhenTheConditionalUpdateMatchesNoRow() {
+        // T5b, 6b. Scope: the service's half of the race only. Given the conditional update matched no row (another
+        // instructor's deactivation got there first), the service answers 6b and does not fall back to a
+        // read-check-save that would let both requests through. Whether the update's WHERE clause really matches no
+        // row for an already deactivated student is the SQL's job, which the repository mock cannot see: that is
+        // StudentDeactivationIntegrationTest.alreadyDeactivatedIsAConflict (T5), which goes red if the guard is removed.
         Student john = this.students.get(0);
         john.setEnabled(false);
         given(this.studentRepository.deactivateIfActive(1)).willReturn(0);
@@ -244,6 +248,8 @@ class StudentServiceTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> this.studentService.deactivateStudent(1))
                 .isInstanceOf(StudentAlreadyDeactivatedException.class)
                 .hasMessage("This student is already deactivated.");
+        verify(this.studentRepository, times(1)).deactivateIfActive(1); // The one conditional update decided it
+        verify(this.studentRepository, never()).save(any(Student.class)); // No read-check-save fallback
     }
 
     @Test
