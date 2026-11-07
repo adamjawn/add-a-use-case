@@ -118,7 +118,11 @@ public class StudentService {
 
         // If the user is an admin, then the user can update all the fields
         if (authentication.getAuthorities().stream().anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_instructor"))) {
-            oldStudent.setEnabled(update.isEnabled());
+            // The edit form may reactivate a student but never deactivate her: deactivation goes through
+            // deactivateStudent, which warns first and checks who may (UC-STU-deactivate-student)
+            if (update.isEnabled()) {
+                oldStudent.setEnabled(true);
+            }
 //            oldStudent.setRoles(update.getRoles());
         }
 
