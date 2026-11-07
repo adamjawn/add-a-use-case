@@ -1530,6 +1530,7 @@ Details:
 
 **Associated Information:**
 - The course admin or instructor shall be able to cancel the use case at any time prior to submitting it.
+- Team and peer evaluations: deactivation keeps the student on her team (BR-student-lifecycle), so reactivation returns her to that team as it now is. If a course admin removed her from the team while she was deactivated, reactivation does not put her back; she is assigned to a team again through UC-TEA-assign-students. Reactivation does not reopen the weeks she was deactivated: peer evaluations of her that BR-deactivated-evaluatee refused in those weeks cannot be made up (BR-evaluation-submission-window).
 
 **Related Use Cases:** UC-STU-delete-student: Delete a student; UC-STU-deactivate-student: Deactivate a student
 **Assumptions:**
