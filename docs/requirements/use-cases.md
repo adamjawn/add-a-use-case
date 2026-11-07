@@ -1485,10 +1485,11 @@ Details:
 
 **Priority:** Low
 **Frequency of Use:** Rare. Occurs occasionally when a student withdraws from a course section.
-**Business Rules:** BR-student-lifecycle (who may deactivate her, and what deactivation keeps), BR-section-scoped-access and BR-role-based-access (a course admin may do so for any course section of a course she owns, assigned to it or not)
+**Business Rules:** BR-student-lifecycle (who may deactivate her, and what deactivation keeps), BR-section-scoped-access and BR-role-based-access (a course admin may do so for any course section of a course she owns, assigned to it or not), BR-submission-owed and BR-deactivated-evaluatee (her teammates' peer evaluations of her)
 
 **Associated Information:**
 - Consequence of the deactivation: The student will no longer be able to log in or submit weekly activity reports and peer evaluations, but the student's account and her previously submitted work are kept in the system. Deactivation will NOT remove the student from the system, and the account can be reactivated in the future (UC-STU-reactivate-student: Reactivate a student). This is distinct from deletion (UC-STU-delete-student: Delete a student), which is a physical, unrecoverable delete. The course admin or instructor shall be able to cancel the use case at any time prior to submitting it.
+- Team and peer evaluations: the student stays on her team (BR-student-lifecycle). From her deactivation on, her teammates no longer owe a peer evaluation of her (BR-submission-owed) and may not submit one (BR-deactivated-evaluatee). Her weekly activity reports and the peer evaluations she gave and received are kept, and the course section's peer evaluation report keeps listing her for the weeks in which she received one (BR-deactivated-evaluatee). The warning in step 4 states these consequences.
 - Choice offered: the details of a deactivated student offer reactivation (UC-STU-reactivate-student) in place of deactivation, so step 3 is offered only for an active student; 6b covers a page opened before someone else deactivated her.
 
 **Related Use Cases:** UC-STU-delete-student: Delete a student; UC-STU-reactivate-student: Reactivate a student
