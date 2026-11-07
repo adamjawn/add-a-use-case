@@ -168,7 +168,10 @@ async function updateExistingStudent() {
   const updatedStudent: Student = {
     id: studentBeingEdited.value.id,
     username: studentBeingEdited.value.username,
-    enabled: studentBeingEdited.value.enabled,
+    // true only when a deactivated student is deliberately switched back on. For a student who was active when the
+    // form loaded, send false, which the server ignores: true would reactivate the student if someone else deactivated them
+    // while this form was open (UC-STU-deactivate-student)
+    enabled: !isActive.value && studentBeingEdited.value.enabled === true,
     firstName: studentBeingEdited.value.firstName,
     lastName: studentBeingEdited.value.lastName,
     email: studentBeingEdited.value.email

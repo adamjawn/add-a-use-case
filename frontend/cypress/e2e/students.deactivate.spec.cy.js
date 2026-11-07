@@ -31,7 +31,7 @@ describe('Deactivate a student', () => {
     }).as('deactivate')
   })
 
-  // Her details answer enabled the first time and `afterwards` from then on
+  // John's details answer `first` the first time and `afterwards` from then on
   function openJohnsDetails(first = john, afterwards = first) {
     let calls = 0
     cy.intercept('GET', '**/students/4', (req) => {
@@ -60,7 +60,7 @@ describe('Deactivate a student', () => {
       .and('contain', 'can be reactivated later, unlike deleting')
   })
 
-  it('sends nothing and keeps her details open on Cancel or Esc (5a)', () => {
+  it('sends nothing and keeps the details open on Cancel or Esc (5a)', () => {
     openJohnsDetails()
 
     cy.get('[data-cy=student-deactivate]').click()
@@ -96,7 +96,26 @@ describe('Deactivate a student', () => {
     cy.get('[data-cy=student-status]').should('not.have.class', 'is-disabled')
   })
 
-  it('says she is already deactivated and reloads her details on a 409 (6b)', () => {
+  it('saving the edit form of an active student cannot undo a deactivation made meanwhile (6b race)', () => {
+    cy.intercept('PUT', '**/students/4', (req) => req.reply({ body: studentResult(req.body) })).as('save')
+    openJohnsDetails()
+
+    cy.get('.el-dialog').contains('button', 'Confirm').click()
+
+    cy.wait('@save').its('request.body.enabled').should('eq', false) // false is ignored by the server; true would reactivate
+  })
+
+  it('saving the edit form reactivates a deactivated student switched back on (choice offered)', () => {
+    cy.intercept('PUT', '**/students/4', (req) => req.reply({ body: studentResult(req.body) })).as('save')
+    openJohnsDetails({ ...john, enabled: false })
+
+    cy.get('[data-cy=student-status]').click()
+    cy.get('.el-dialog').contains('button', 'Confirm').click()
+
+    cy.wait('@save').its('request.body.enabled').should('eq', true)
+  })
+
+  it('says the student is already deactivated and reloads the details on a 409 (6b)', () => {
     cy.intercept('POST', '**/students/4/deactivation', {
       statusCode: 409,
       body: { flag: false, code: 409, message: 'This student is already deactivated.' }
