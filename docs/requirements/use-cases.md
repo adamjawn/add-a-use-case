@@ -1473,6 +1473,10 @@ Details:
 7. Use case ends.
 
 **Extensions:**
+- **5a. The course admin or instructor cancels at the warning:**
+  - 5a1. The system changes nothing and returns the course admin or instructor to the details of this student.
+  - 5a2. Use case ends.
+
 **Priority:** Low
 **Frequency of Use:** Rare. Occurs occasionally when a student withdraws from a course section.
 **Business Rules:** BR-student-lifecycle
