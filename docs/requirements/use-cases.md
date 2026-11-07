@@ -1458,7 +1458,7 @@ Details:
 
 **Preconditions:**
 - PRE-1. The course admin or instructor is logged into the system.
-- PRE-2. There exists at least one active student in the system.
+- PRE-2. The student's account is active.
 
 **Postconditions:**
 - POST-1. The student's account is deactivated.
@@ -1479,6 +1479,9 @@ Details:
 - **6a. The user is not permitted to deactivate this student** (neither a course admin who owns the student's course nor an instructor assigned to the student's course section):
   - 6a1. The system denies the deactivation (FR-SEC-deny-unauthorized) and changes nothing.
   - 6a2. Use case ends.
+- **6b. The student's account is already deactivated** (for example, another course admin or instructor deactivated her after step 2):
+  - 6b1. The system informs the course admin or instructor that the student is already deactivated and changes nothing.
+  - 6b2. Use case ends.
 
 **Priority:** Low
 **Frequency of Use:** Rare. Occurs occasionally when a student withdraws from a course section.
@@ -1486,6 +1489,7 @@ Details:
 
 **Associated Information:**
 - Consequence of the deactivation: The student will no longer be able to log in or submit weekly activity reports and peer evaluations, but the student's account and her previously submitted work are kept in the system. Deactivation will NOT remove the student from the system, and the account can be reactivated in the future (UC-STU-reactivate-student: Reactivate a student). This is distinct from deletion (UC-STU-delete-student: Delete a student), which is a physical, unrecoverable delete. The course admin or instructor shall be able to cancel the use case at any time prior to submitting it.
+- Choice offered: the details of a deactivated student offer reactivation (UC-STU-reactivate-student) in place of deactivation, so step 3 is offered only for an active student; 6b covers a page opened before someone else deactivated her.
 
 **Related Use Cases:** UC-STU-delete-student: Delete a student; UC-STU-reactivate-student: Reactivate a student
 **Assumptions:**
