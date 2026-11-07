@@ -1476,10 +1476,13 @@ Details:
 - **5a. The course admin or instructor cancels at the warning:**
   - 5a1. The system changes nothing and returns the course admin or instructor to the details of this student.
   - 5a2. Use case ends.
+- **6a. The user is not permitted to deactivate this student** (neither a course admin who owns the student's course nor an instructor assigned to the student's course section):
+  - 6a1. The system denies the deactivation (FR-SEC-deny-unauthorized) and changes nothing.
+  - 6a2. Use case ends.
 
 **Priority:** Low
 **Frequency of Use:** Rare. Occurs occasionally when a student withdraws from a course section.
-**Business Rules:** BR-student-lifecycle
+**Business Rules:** BR-student-lifecycle (who may deactivate her, and what deactivation keeps), BR-section-scoped-access and BR-role-based-access (a course admin may do so for any course section of a course she owns, assigned to it or not)
 
 **Associated Information:**
 - Consequence of the deactivation: The student will no longer be able to log in or submit weekly activity reports and peer evaluations, but the student's account and her previously submitted work are kept in the system. Deactivation will NOT remove the student from the system, and the account can be reactivated in the future (UC-STU-reactivate-student: Reactivate a student). This is distinct from deletion (UC-STU-delete-student: Delete a student), which is a physical, unrecoverable delete. The course admin or instructor shall be able to cancel the use case at any time prior to submitting it.
