@@ -205,7 +205,12 @@ async function prepareStartingPeerEvaluations() {
 
   // If the student has already submitted evaluations for the current week, load them
   if (result.data.length > 0) {
-    peerEvalutions.value = result.data
+    // Leave out an evaluation of a teammate deactivated since it was submitted: it is kept on the server, but an
+    // update of it is refused (BR-deactivated-evaluatee), which would fail the whole save
+    const activeTeammateIds = new Set(students.value.map((student) => student.id))
+    peerEvalutions.value = result.data.filter((evaluation) =>
+      activeTeammateIds.has(evaluation.evaluateeId)
+    )
     isNewSubmission = false
   } else {
     // If not, create a new set of evaluations

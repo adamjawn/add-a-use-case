@@ -138,4 +138,38 @@ describe('Peer evaluation of a deactivated teammate', () => {
     cy.contains('Jerry Moon').should('exist')
     cy.contains('Eric Hudson').should('not.exist')
   })
+
+  it('leaves out an already-submitted evaluation of a teammate deactivated since (BR-deactivated-evaluatee)', () => {
+    cy.login('j.smith@abc.edu', '123456')
+    cy.intercept('GET', '**/students/teams/*', {
+      body: {
+        flag: true,
+        code: 200,
+        message: 'Find students by team id successfully',
+        data: [
+          john,
+          { id: 5, username: 'e.hudson@abc.edu', enabled: false, firstName: 'Eric', lastName: 'Hudson', email: 'e.hudson@abc.edu' },
+          { id: 6, username: 'j.moon@abc.edu', enabled: true, firstName: 'Jerry', lastName: 'Moon', email: 'j.moon@abc.edu' }
+        ]
+      }
+    }).as('teammates')
+    const submitted = (id, evaluateeId, evaluateeName) => ({
+      evaluationId: id, week: '2023-W33', evaluatorId: 4, evaluatorName: 'John Smith', evaluateeId, evaluateeName,
+      ratings: [], totalScore: 0, publicComment: '', privateComment: ''
+    })
+    cy.intercept('GET', '**/evaluations/evaluators/*/week/*', {
+      body: {
+        flag: true,
+        code: 200,
+        message: 'Find evaluations successfully',
+        data: [submitted(11, 4, 'John Smith'), submitted(12, 5, 'Eric Hudson'), submitted(13, 6, 'Jerry Moon')]
+      }
+    })
+
+    cy.visit('/evaluations/submit-evaluations')
+    cy.wait('@teammates')
+
+    cy.contains('Jerry Moon').should('exist')
+    cy.contains('Eric Hudson').should('not.exist')
+  })
 })
