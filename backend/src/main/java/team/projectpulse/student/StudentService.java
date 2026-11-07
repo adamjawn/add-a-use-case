@@ -129,6 +129,22 @@ public class StudentService {
         return this.studentRepository.save(oldStudent);
     }
 
+    /**
+     * Deactivates a student (UC-STU-deactivate-student). She keeps her team, her weekly activity reports and the
+     * peer evaluations she gave and received (BR-student-lifecycle); the route rule has already checked the caller.
+     *
+     * @throws StudentAlreadyDeactivatedException if she was already deactivated (6b)
+     */
+    public Student deactivateStudent(Integer studentId) {
+        if (this.studentRepository.deactivateIfActive(studentId) == 0) {
+            this.studentRepository.findById(studentId)
+                    .orElseThrow(() -> new ObjectNotFoundException("student", studentId));
+            throw new StudentAlreadyDeactivatedException();
+        }
+        return this.studentRepository.findById(studentId)
+                .orElseThrow(() -> new ObjectNotFoundException("student", studentId));
+    }
+
     public void deleteStudent(Integer studentId) {
         this.studentRepository.findById(studentId)
                 .orElseThrow(() -> new ObjectNotFoundException("student", studentId));

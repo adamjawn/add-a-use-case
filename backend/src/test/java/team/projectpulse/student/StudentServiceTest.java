@@ -214,4 +214,47 @@ class StudentServiceTest {
         verify(this.studentRepository, times(1)).deleteById(1);
     }
 
+    // UC-STU-deactivate-student
+
+    @Test
+    void testDeactivateStudentSuccess() {
+        // Given: the conditional update finds John active and deactivates him
+        Student john = this.students.get(0);
+        given(this.studentRepository.deactivateIfActive(1)).willReturn(1);
+        john.setEnabled(false);
+        given(this.studentRepository.findById(1)).willReturn(Optional.of(john));
+
+        // When
+        Student result = this.studentService.deactivateStudent(1);
+
+        // Then
+        assertThat(result.isEnabled()).isFalse();
+        verify(this.studentRepository, never()).save(any(Student.class)); // One conditional update, no read-check-save
+    }
+
+    @Test
+    void testDeactivateStudentAlreadyDeactivated() {
+        // Given: another instructor's deactivation got there first, so the conditional update reports no row (T5b, 6b)
+        Student john = this.students.get(0);
+        john.setEnabled(false);
+        given(this.studentRepository.deactivateIfActive(1)).willReturn(0);
+        given(this.studentRepository.findById(1)).willReturn(Optional.of(john));
+
+        // When, then
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> this.studentService.deactivateStudent(1))
+                .isInstanceOf(StudentAlreadyDeactivatedException.class)
+                .hasMessage("This student is already deactivated.");
+    }
+
+    @Test
+    void testDeactivateStudentNotFound() {
+        // Given
+        given(this.studentRepository.deactivateIfActive(99)).willReturn(0);
+        given(this.studentRepository.findById(99)).willReturn(Optional.empty());
+
+        // When, then
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> this.studentService.deactivateStudent(99))
+                .isInstanceOf(team.projectpulse.system.exception.ObjectNotFoundException.class);
+    }
+
 }
