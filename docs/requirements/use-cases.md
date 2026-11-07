@@ -1458,7 +1458,7 @@ Details:
 
 **Preconditions:**
 - PRE-1. The course admin or instructor is logged into the system.
-- PRE-2. There exists at least one active student in the system.
+- PRE-2. The student's account is active.
 
 **Postconditions:**
 - POST-1. The student's account is deactivated.
@@ -1473,12 +1473,25 @@ Details:
 7. Use case ends.
 
 **Extensions:**
+- **5a. The course admin or instructor cancels at the warning:**
+  - 5a1. The system changes nothing and returns the course admin or instructor to the details of this student.
+  - 5a2. Use case ends.
+- **6a. The user is not permitted to deactivate this student** (neither a course admin who owns the student's course nor an instructor assigned to the student's course section):
+  - 6a1. The system denies the deactivation (FR-SEC-deny-unauthorized) and changes nothing.
+  - 6a2. Use case ends.
+- **6b. The student's account is already deactivated** (for example, another course admin or instructor deactivated her after step 2):
+  - 6b1. The system informs the course admin or instructor that the student is already deactivated and changes nothing.
+  - 6b2. Use case ends.
+
 **Priority:** Low
 **Frequency of Use:** Rare. Occurs occasionally when a student withdraws from a course section.
-**Business Rules:** BR-student-lifecycle
+**Business Rules:** BR-student-lifecycle (who may deactivate her, and what deactivation keeps), BR-section-scoped-access and BR-role-based-access (a course admin may do so for any course section of a course she owns, assigned to it or not), BR-submission-owed and BR-deactivated-evaluatee (her teammates' peer evaluations of her)
 
 **Associated Information:**
 - Consequence of the deactivation: The student will no longer be able to log in or submit weekly activity reports and peer evaluations, but the student's account and her previously submitted work are kept in the system. Deactivation will NOT remove the student from the system, and the account can be reactivated in the future (UC-STU-reactivate-student: Reactivate a student). This is distinct from deletion (UC-STU-delete-student: Delete a student), which is a physical, unrecoverable delete. The course admin or instructor shall be able to cancel the use case at any time prior to submitting it.
+- Team and peer evaluations: the student stays on her team (BR-student-lifecycle). From her deactivation on, her teammates no longer owe a peer evaluation of her (BR-submission-owed) and may not submit one (BR-deactivated-evaluatee). Her weekly activity reports and the peer evaluations she gave and received are kept, and the course section's peer evaluation report keeps listing her for the weeks in which she received one (BR-deactivated-evaluatee). The warning in step 4 states these consequences.
+- Session in progress: if the student is logged in when she is deactivated, the deactivation takes effect on her next request, which the system denies (FR-SEC-active-account); she does not keep access until her login expires.
+- Choice offered: the details of a deactivated student offer reactivation (UC-STU-reactivate-student) in place of deactivation, so step 3 is offered only for an active student; 6b covers a page opened before someone else deactivated her.
 
 **Related Use Cases:** UC-STU-delete-student: Delete a student; UC-STU-reactivate-student: Reactivate a student
 **Assumptions:**
@@ -1517,6 +1530,7 @@ Details:
 
 **Associated Information:**
 - The course admin or instructor shall be able to cancel the use case at any time prior to submitting it.
+- Team and peer evaluations: deactivation keeps the student on her team (BR-student-lifecycle), so reactivation returns her to that team as it now is. If a course admin removed her from the team while she was deactivated, reactivation does not put her back; she is assigned to a team again through UC-TEA-assign-students. Reactivation does not reopen the weeks she was deactivated: peer evaluations of her that BR-deactivated-evaluatee refused in those weeks cannot be made up (BR-evaluation-submission-window).
 
 **Related Use Cases:** UC-STU-delete-student: Delete a student; UC-STU-deactivate-student: Deactivate a student
 **Assumptions:**
@@ -2228,7 +2242,7 @@ Report generating algorithm: N/A
 
 **Priority:** High
 **Frequency of Use:** Approximately 35-40 users, 1 usage per week.
-**Business Rules:** BR-team-scoped-access (the student evaluates the members of a team she belongs to, and no other team), BR-team-assignment-required (only a student assigned to a team submits one), BR-active-weeks, BR-evaluation-editable-until-close, BR-evaluation-submission-window, BR-evaluation-private-comment
+**Business Rules:** BR-team-scoped-access (the student evaluates the members of a team she belongs to, and no other team), BR-team-assignment-required (only a student assigned to a team submits one), BR-active-weeks, BR-evaluation-editable-until-close, BR-evaluation-submission-window, BR-evaluation-private-comment, BR-deactivated-evaluatee (a deactivated teammate is not evaluated)
 
 **Associated Information:**
 
@@ -2343,7 +2357,7 @@ Report generating algorithm: For each individual criterion score (e.g., Quality 
 
 **Priority:** High
 **Frequency of Use:** Approximately 2 users, average of 1 usage per week.
-**Business Rules:** BR-section-scoped-access (the instructor may generate the report only for a course section she is assigned to), BR-evaluation-private-comment, BR-submission-owed (who has not turned in the peer evaluation)
+**Business Rules:** BR-section-scoped-access (the instructor may generate the report only for a course section she is assigned to), BR-evaluation-private-comment, BR-submission-owed (who has not turned in the peer evaluation), BR-deactivated-evaluatee (which weeks list a deactivated student)
 
 **Associated Information:**
 
