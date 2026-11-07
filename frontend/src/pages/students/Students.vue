@@ -46,6 +46,7 @@
             circle
             plain
             type="primary"
+            data-cy="student-edit"
             @click.stop="showEditStudentDialog(row)"
           ></el-button>
         </template>
@@ -71,6 +72,7 @@
       <EditStudentForm
         :studentId="studentBeingEditedId"
         @close-dialog="closeDialog"
+        @student-changed="loadStudents"
       ></EditStudentForm>
     </el-dialog>
   </el-card>
