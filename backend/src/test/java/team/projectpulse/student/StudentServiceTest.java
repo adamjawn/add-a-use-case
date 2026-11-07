@@ -174,7 +174,31 @@ class StudentServiceTest {
         assertThat(result.getLastName()).isEqualTo(update.getLastName());
         assertThat(result.getEmail()).isEqualTo(update.getEmail());
 //        assertThat(result.getRoles()).isEqualTo(update.getRoles());
-        assertThat(result.isEnabled()).isEqualTo(update.isEnabled());
+        // The edit form cannot deactivate: that is UC-STU-deactivate-student's own route (T10)
+        assertThat(result.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testInstructorReactivatesStudentThroughTheEditForm() {
+        // Given: John is deactivated; the edit form still reactivates (until UC-STU-reactivate-student is built) (T10)
+        Student john = this.students.get(0);
+        john.setEnabled(false);
+        Student update = new Student("john", "John", "Smith", "j.smith@abc.edu", "", true, "student");
+        given(this.studentRepository.findById(1)).willReturn(Optional.of(john));
+        given(this.studentRepository.save(any(Student.class))).willReturn(john);
+
+        Instructor instructor = new Instructor();
+        instructor.setRoles("instructor");
+        MyUserPrincipal myUserPrincipal = new MyUserPrincipal(instructor);
+        SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+        securityContext.setAuthentication(new UsernamePasswordAuthenticationToken(myUserPrincipal, null, myUserPrincipal.getAuthorities()));
+        SecurityContextHolder.setContext(securityContext);
+
+        // When
+        Student result = this.studentService.updateStudent(1, update);
+
+        // Then
+        assertThat(result.isEnabled()).isTrue();
     }
 
     @Test
@@ -188,6 +212,55 @@ class StudentServiceTest {
 
         // Then
         verify(this.studentRepository, times(1)).deleteById(1);
+    }
+
+    // UC-STU-deactivate-student
+
+    @Test
+    void testDeactivateStudentSuccess() {
+        // Given: the conditional update finds John active and deactivates him
+        Student john = this.students.get(0);
+        given(this.studentRepository.deactivateIfActive(1)).willReturn(1);
+        john.setEnabled(false);
+        given(this.studentRepository.findById(1)).willReturn(Optional.of(john));
+
+        // When
+        Student result = this.studentService.deactivateStudent(1);
+
+        // Then
+        assertThat(result.isEnabled()).isFalse();
+        verify(this.studentRepository, never()).save(any(Student.class)); // One conditional update, no read-check-save
+    }
+
+    @Test
+    void testDeactivateStudentReportsAlreadyDeactivatedWhenTheConditionalUpdateMatchesNoRow() {
+        // T5b, 6b. Scope: the service's half of the race only. Given the conditional update matched no row (another
+        // instructor's deactivation got there first), the service answers 6b and does not fall back to a
+        // read-check-save that would let both requests through. Whether the update's WHERE clause really matches no
+        // row for an already deactivated student is the SQL's job, which the repository mock cannot see: that is
+        // StudentDeactivationIntegrationTest.alreadyDeactivatedIsAConflict (T5), which goes red if the guard is removed.
+        Student john = this.students.get(0);
+        john.setEnabled(false);
+        given(this.studentRepository.deactivateIfActive(1)).willReturn(0);
+        given(this.studentRepository.findById(1)).willReturn(Optional.of(john));
+
+        // When, then
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> this.studentService.deactivateStudent(1))
+                .isInstanceOf(StudentAlreadyDeactivatedException.class)
+                .hasMessage("This student is already deactivated.");
+        verify(this.studentRepository, times(1)).deactivateIfActive(1); // The one conditional update decided it
+        verify(this.studentRepository, never()).save(any(Student.class)); // No read-check-save fallback
+    }
+
+    @Test
+    void testDeactivateStudentNotFound() {
+        // Given
+        given(this.studentRepository.deactivateIfActive(99)).willReturn(0);
+        given(this.studentRepository.findById(99)).willReturn(Optional.empty());
+
+        // When, then
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> this.studentService.deactivateStudent(99))
+                .isInstanceOf(team.projectpulse.system.exception.ObjectNotFoundException.class);
     }
 
 }

@@ -7,7 +7,7 @@
 
 ## Overview
 
-The `student` slice holds a student's account. Before this design, deactivating one was the generic `PUT /students/{studentId}` flipping `enabled` from the edit form's Status dropdown: no warning, no check that the caller is the student's instructor or course admin, and nothing for the rest of the system to act on. A deactivated student also kept her access for the life of her token (up to 2 hours), and her teammates could still submit peer evaluations of her.
+The `student` slice holds a student's account. Before this design, deactivating one was the generic `PUT /students/{studentId}` flipping `enabled` from the edit form's Status switch: no warning, no check that the caller is the student's instructor or course admin, and nothing for the rest of the system to act on. A deactivated student also kept her access for the life of her token (up to 2 hours), and her teammates could still submit peer evaluations of her.
 
 This design adds a dedicated deactivation route with its own authorization manager, makes every authenticated request check that the account is still active, and makes `evaluation` refuse evaluations of a deactivated student and drop her from the course section's report for weeks with nothing to show. She stays on her team (BR-student-lifecycle), so nothing in `team` or `activity` changes.
 
@@ -48,6 +48,10 @@ classDiagram
         +updatePeerEvaluation(id, update) PeerEvaluation
         +generateWeeklyPeerEvaluationReportForSection(sectionId, week)
     }
+    class StudentRepository {
+        <<changed, student>>
+        +deactivateIfActive(studentId) int
+    }
     class UserRepository {
         <<reused, user>>
     }
@@ -56,6 +60,7 @@ classDiagram
         +findByWeekAndEvaluateeId(week, studentId)
     }
     StudentController --> StudentService
+    StudentService --> StudentRepository : conditional update
     StudentService ..> StudentAlreadyDeactivatedException : throws (6b)
     StudentLifecycleAuthorizationManager --> StudentSecurityService
     SecurityConfiguration --> StudentLifecycleAuthorizationManager : POST /students/{id}/deactivation
@@ -66,7 +71,7 @@ classDiagram
 
 Files: [StudentController](../../backend/src/main/java/team/projectpulse/student/StudentController.java), [StudentService](../../backend/src/main/java/team/projectpulse/student/StudentService.java), [StudentSecurityService](../../backend/src/main/java/team/projectpulse/student/StudentSecurityService.java), [SecurityConfiguration](../../backend/src/main/java/team/projectpulse/security/SecurityConfiguration.java), [EvaluationService](../../backend/src/main/java/team/projectpulse/evaluation/EvaluationService.java), new `security/authorizationmanagers/StudentLifecycleAuthorizationManager.java` and `security/ActiveAccountJwtAuthenticationConverter.java`.
 
-Frontend: `apis/student` gains `deactivateStudent(id)`. The student's details are [EditStudentForm.vue](../../frontend/src/pages/students/EditStudentForm.vue), the dialog [Students.vue](../../frontend/src/pages/students/Students.vue) opens for a row (UC-STU-view-student's realization in `traceability.md`). That dialog gains a Deactivate button, shown only for an enabled student; for a disabled student it shows no Deactivate button, and its Status dropdown is the reactivation path (the "choice offered" line). For an enabled student the dropdown is disabled, so it cannot deactivate. [SubmitTeamsEvaluations.vue](../../frontend/src/pages/evaluations/SubmitTeamsEvaluations.vue) leaves out teammates whose `StudentDto.enabled` is false; the DTO already carries `enabled`.
+Frontend: `apis/student` gains `deactivateStudent(id)`. The student's details are [EditStudentForm.vue](../../frontend/src/pages/students/EditStudentForm.vue), the dialog [Students.vue](../../frontend/src/pages/students/Students.vue) opens for a row (UC-STU-view-student's realization in `traceability.md`). That dialog gains a Deactivate button, shown only for an enabled student; for a disabled student it shows no Deactivate button, and its Status switch is the reactivation path (the "choice offered" line). For an enabled student the switch is disabled, so it cannot deactivate. [SubmitTeamsEvaluations.vue](../../frontend/src/pages/evaluations/SubmitTeamsEvaluations.vue) leaves out teammates whose `StudentDto.enabled` is false; the DTO already carries `enabled`.
 
 UI behavior the use case leaves to design:
 - **Step 4 warning** (`ElMessageBox.confirm`, title "Deactivate <first name> <last name>?"), one line per consequence: she can no longer log in, and if she is logged in now she is signed out on her next action; she stays on her team; her teammates no longer evaluate her; her weekly activity reports and peer evaluations are kept; she can be reactivated later, unlike deleting her. Buttons "Deactivate" and "Cancel".
@@ -142,7 +147,7 @@ sequenceDiagram
 
 **A dedicated route with its own authorization manager.** Rejected: reusing `PUT /students/{studentId}` under `UserOwnershipAuthorizationManager`, which admits the student herself and refuses a course admin who owns the course but is not assigned to the course section. That refusal contradicts BR-student-lifecycle; the reminder routes already compose "assigned instructor or owning course admin" the same way.
 
-**The edit form can only reactivate.** `updateStudent` may set `enabled` from false to true, never from true to false. Rejected: removing the field, which leaves no way to reactivate until UC-STU-reactivate-student is built. Rejected: leaving it, which keeps a second deactivation path that skips step 4's warning and 6a/6b.
+**The edit form can only reactivate.** `updateStudent` may set `enabled` from false to true, never from true to false. Rejected: removing the field, which leaves no way to reactivate until UC-STU-reactivate-student is built. Rejected: leaving it, which keeps a second deactivation path that skips step 4's warning and 6a/6b. Because `true` means reactivate, the form sends `enabled: true` only when a deactivated student is switched back on, and `false` (ignored) otherwise; sending the switch's value as loaded would let a form opened before someone else's deactivation undo it on save.
 
 **6b is a `409`, not a silent `200`, decided by one conditional update.** `deactivateStudent` runs `UPDATE … SET enabled = false WHERE id = ? AND enabled = true` and answers `409` when it updates no row, so two instructors confirming at the same moment get one `200` and one `409`. Rejected: an idempotent success, which would tell the second instructor she had just deactivated the student when someone else had. Rejected: read, check, then save, which lets both requests through, since the entity has no `@Version`.
 
@@ -174,14 +179,14 @@ No change. Deactivation uses the existing `enabled` column on the user table (SR
 | T9 BR-deactivated-evaluatee, report | unit | Deactivated, evaluated in week W: listed for W; not evaluated in week W+1: not listed for W+1; an active student with no evaluations: listed |
 | T10 edit form cannot deactivate | unit | `updateStudent` with `enabled: false` on an enabled student leaves her enabled; `enabled: true` on a disabled student enables her |
 | T11 unknown student | integration | `POST /students/{unknownId}/deactivation`: `403`; nothing changes |
-| T12 step 4, 5a, 6, choice offered | E2E (Cypress, API stubbed) | In her details, the warning shows each consequence line from Components; Cancel and Esc send no `POST` and leave her details open; a deactivated student's details show no Deactivate button and an enabled Status dropdown; Deactivate sends one `POST` and shows "<first> <last> has been deactivated." |
+| T12 step 4, 5a, 6, choice offered | E2E (Cypress, API stubbed) | In her details, the warning shows each consequence line from Components; Cancel and Esc send no `POST` and leave her details open; a deactivated student's details show no Deactivate button and an enabled Status switch; Deactivate sends one `POST` and shows "<first> <last> has been deactivated." |
 | T12b 6b in the UI | E2E (Cypress, API stubbed) | A `409` toasts "This student is already deactivated." and her details reload as disabled |
 | T12c teammates to evaluate | E2E (Cypress, API stubbed) | A teammate with `enabled: false` is not offered on the peer evaluation page |
 | BR-submission-owed | existing | `SubmissionStatusServiceTest` already covers a deactivated student; cited, no new test |
 
 ## Open questions / risks
 
-- **The converter's exception path.** A `DisabledException` thrown from the JWT converter must reach `CustomBearerTokenAuthenticationEntryPoint` as a `401`, not escape as a `500`. T6 is the proof; if it does not, the check moves to a filter after bearer authentication.
+- **The converter's exception path.** Settled: a `DisabledException` thrown from the JWT converter reaches `CustomBearerTokenAuthenticationEntryPoint` as a `401` (T6, `ActiveAccountIntegrationTest`).
 - **One more database read per request.** Accepted (see Key decisions). Not measured.
 - **Reactivation stays on the edit form** until UC-STU-reactivate-student is built; its warning and extensions are that use case's to design. That form saves through `PUT /students/{studentId}` under `UserOwnershipAuthorizationManager`, so a course admin not assigned to the course section can deactivate a student but not reactivate her, which BR-student-lifecycle allows. Left for UC-STU-reactivate-student, which should reuse `StudentLifecycleAuthorizationManager`.
 - **A stale token on an open route.** The resource server authenticates a bearer header wherever it is sent, so a deactivated user whose browser still sends her old token to an open route (login, password reset) gets `401`. Accepted: the frontend's `401` handler clears the token and the retry succeeds or fails on its own merits.
